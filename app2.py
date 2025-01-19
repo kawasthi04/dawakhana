@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 from PIL import Image  # For handling images
-from text_extraction import extract_text_from_image, extract_entities  # Import OCR utility
+# from text_extraction import extract_text_from_image, extract_entities  # Import OCR utility
 
 # Initialize the database
 def init_db():
@@ -579,7 +579,8 @@ def upload_prescription():
         st.image(image, caption='Uploaded Prescription', use_container_width=True)
         
         # Extract text from the image
-        extracted_text = extract_text_from_image(uploaded_file)
+        # extracted_text = extract_text_from_image(uploaded_file)
+        extracted_text = "Work in progress!"
         
         if extracted_text:
             # Display the extracted text in a more structured way
