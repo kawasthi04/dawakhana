@@ -24,7 +24,7 @@ def init_db():
 init_db()
 
 # Global Layout Config
-st.set_page_config(page_title="DawaKhana", layout="wide", page_icon="static\pills_bottle_logo.svg")
+st.set_page_config(page_title="DawaKhana", layout="wide", page_icon="pills_bottle_logo.svg")
 
 # Custom CSS for Styling
 st.markdown("""
@@ -221,7 +221,7 @@ def display_drugs_grid(drugs):
         with cols[idx % cols_per_row]:
             # Card container
             with st.container():
-                st.image("static\\bottle_blue.svg", caption=drug[1], width=100)
+                st.image("\bottle_blue.svg", caption=drug[1], width=100)
                 
                 # Dynamic stock status indicator
                 stock_level = "high" if drug[2] > 50 else "medium" if drug[2] > 20 else "low"
@@ -375,7 +375,7 @@ def view_drugs():
         with cols[idx % cols_per_row]:
             # Card-like layout for each drug
             with st.container():
-                st.image("static\\bottle_blue.svg", caption=drug[1], width=100)  # Drug image
+                st.image("\bottle_blue.svg", caption=drug[1], width=100)  # Drug image
                 st.write(f"*Price:* ₹{drug[4]:.2f}")
                 st.write(f"*Stock:* {drug[2]}")
                 st.write(f"*Expiry:* {drug[3]}")
