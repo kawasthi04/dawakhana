@@ -163,7 +163,8 @@ def login():
 
 # Admin Dashboard
 def admin_dashboard():
-    st.sidebar.header("Admin Menu")
+    st.sidebar.image("static/pills_bottle_logo.svg")
+    st.sidebar.header("Dawakhana")
     st.sidebar.button("Logout", on_click=logout)
 
     # Remove "Dashboard" from the menu options
@@ -222,6 +223,14 @@ def display_drugs_grid(drugs):
             with st.container():
                 st.image("static\\bottle_blue.svg", caption=drug[1], width=100)
                 
+                with st.popover("More Info"):
+                    # Fetch drug description from the drug_info dictionary
+                    description = drug_info.get(drug[1], "Description not available.")
+                    
+                    # Display structured drug details
+                    st.markdown(f"### {drug[1]} Details")
+                    st.markdown(description)
+                
                 # Dynamic stock status indicator
                 stock_level = "high" if drug[2] > 50 else "medium" if drug[2] > 20 else "low"
                 stock_color = "green" if stock_level == "high" else "orange" if stock_level == "medium" else "red"
@@ -237,13 +246,6 @@ def display_drugs_grid(drugs):
                 st.markdown(f"**Expiry:** <span style='color: {expiry_color}'>{drug[3]}</span>", unsafe_allow_html=True)
                 
                 # Pop-up for detailed information
-                with st.popover("More Info"):
-                    # Fetch drug description from the drug_info dictionary
-                    description = drug_info.get(drug[1], "Description not available.")
-                    
-                    # Display structured drug details
-                    st.markdown(f"### {drug[1]} Details")
-                    st.markdown(description)
                 
                 # Shopping cart functionality for customers
                 if st.session_state.get('role') == 'customer':
@@ -356,14 +358,82 @@ def place_order_from_cart():
     finally:
         conn.close()
 
-# View Drugs with Edit and Delete Options
+# View Drugs
+from datetime import datetime, timedelta  # Ensure timedelta is imported
+
+# Helper function to get drugs near expiry
+def get_drugs_near_expiry(threshold_days=90):
+    """
+    Fetch drugs that are near expiry (within the specified threshold).
+    """
+    conn = connect_db()
+    c = conn.cursor()
+    
+    # Calculate the expiry threshold date
+    threshold_date = (datetime.now() + timedelta(days=threshold_days)).strftime('%Y-%m-%d')
+    
+    # Query drugs expiring within the threshold
+    c.execute("SELECT * FROM medicines WHERE expiry_date <= ? AND expiry_date >= ?", 
+              (threshold_date, datetime.now().strftime('%Y-%m-%d')))
+    drugs_near_expiry = c.fetchall()
+    
+    conn.close()
+    return drugs_near_expiry
+
+# Helper function to get expired drugs
+def get_expired_drugs():
+    """
+    Fetch drugs that have already expired.
+    """
+    conn = connect_db()
+    c = conn.cursor()
+    
+    # Calculate today's date
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # Query drugs that have expired
+    c.execute("SELECT * FROM medicines WHERE expiry_date < ?", (today,))
+    expired_drugs = c.fetchall()
+    
+    conn.close()
+    return expired_drugs
+
 def view_drugs():
     st.subheader("Manage Drugs")
+    
+    # Fetch all drugs from the database
     conn = connect_db()
     c = conn.cursor()
     c.execute("SELECT * FROM medicines")
     drugs = c.fetchall()
     conn.close()
+
+    # Display expiry alerts at the top
+    st.markdown("### ⚠️ Expiry Alerts")
+    drugs_near_expiry = get_drugs_near_expiry(threshold_days=90)
+    expired_drugs = get_expired_drugs()
+    
+    if drugs_near_expiry or expired_drugs:
+        # Create columns for better organization
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if expired_drugs:
+                st.error(f"**{len(expired_drugs)} drugs have expired!**")
+                for drug in expired_drugs:
+                    st.markdown(f"❌ **{drug[1]}** (Expired on: {drug[3]})")
+        
+        with col2:
+            if drugs_near_expiry:
+                st.warning(f"**{len(drugs_near_expiry)} drugs are near expiry!**")
+                for drug in drugs_near_expiry:
+                    expiry_date = datetime.strptime(drug[3], '%Y-%m-%d')
+                    days_to_expiry = (expiry_date - datetime.now()).days
+                    st.markdown(f"⚠️ **{drug[1]}** (Expiry: {drug[3]}, {days_to_expiry} days remaining)")
+    else:
+        st.success("No drugs are near expiry or expired.")
+    
+    st.markdown("---")
 
     # Display drugs in a grid with edit and delete options
     cols_per_row = 4  # Number of columns per row
@@ -373,11 +443,25 @@ def view_drugs():
         with cols[idx % cols_per_row]:
             # Card-like layout for each drug
             with st.container():
+                # Highlight expired drugs with a red border
+                expiry_date = datetime.strptime(drug[3], '%Y-%m-%d')
+                days_to_expiry = (expiry_date - datetime.now()).days
+        
+                
                 st.image("static\\bottle_blue.svg", caption=drug[1], width=100)  # Drug image
                 st.write(f"*Price:* ₹{drug[4]:.2f}")
                 st.write(f"*Stock:* {drug[2]}")
-                st.write(f"*Expiry:* {drug[3]}")
-
+                
+                # Expiry date with color-coded warning
+                expiry_color = "red" if days_to_expiry < 0 else "orange" if days_to_expiry < 90 else "green"
+                st.markdown(f"*Expiry:* <span style='color: {expiry_color}'>{drug[3]}</span>", unsafe_allow_html=True)
+                
+                # Pop-up for detailed information
+                with st.popover("More Info"):
+                    description = drug_info.get(drug[1], "Description not available.")
+                    st.markdown(f"### {drug[1]} Details")
+                    st.markdown(description)
+                
                 # Edit and Delete buttons
                 with st.popover("Edit/Delete Drug"):
                     with st.form(key=f"edit_form_{drug[0]}"):
@@ -410,7 +494,9 @@ def view_drugs():
                         st.toast(f"Deleted {drug[1]} successfully!", icon="✅")
                         st.rerun()
 
+                st.markdown("</div>", unsafe_allow_html=True)  # Close the container
                 st.markdown("---")
+
 
 # Add Drug
 def add_drug():
@@ -502,7 +588,7 @@ def view_orders():
 # Customer Dashboard
 def customer_dashboard():
     st.sidebar.image("static/pills_bottle_logo.svg")
-    st.sidebar.header("Customer Menu")
+    st.sidebar.header("Dawakhana")
     st.sidebar.button("Logout", on_click=logout)
 
     # Remove "Search Drugs" from the menu options
